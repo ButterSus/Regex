@@ -276,14 +276,14 @@ class RegexParser {
      *
      * Usage:
      * ```
-     * val `𝚗` = `⊞`{…} ?: return null
+     * val `𝚗` = `⊕̂`{…} ?: return null
      * ```
      *
      * @param 𝚏 the production to repeat
      * @param 𝚜 the separator production
      * @return the repeated production or `null` if it is not successful
      */
-    private fun `⊞`(`𝚏`: () -> Node?, `𝚜`: () -> Node?): Node.Catalog? {
+    private fun `⊕̂`(`𝚏`: () -> Node?, `𝚜`: () -> Node?): Node.Catalog? {
         val `ℕ` = Node.Catalog(`𝚏`() ?: return null)
         while (true) {
             val `𝚒` = mark()
@@ -298,14 +298,14 @@ class RegexParser {
      *
      * Usage:
      * ```
-     * val `𝚗` = `⧆`{…} ?: return null
+     * val `𝚗` = `⊛̂`{…} ?: return null
      * ```
      *
      * @param 𝚏 the production to repeat
      * @param 𝚜 the separator production
      * @return the repeated production or `null` if it is not successful
      */
-    private fun `⧆`(`𝚏`: () -> Node?, `𝚜`: () -> Node?): Node.Catalog {
+    private fun `⊛̂`(`𝚏`: () -> Node?, `𝚜`: () -> Node?): Node.Catalog {
         val `ℕ` = Node.Catalog()
         var `𝚒` = mark()
         while (true) {
