@@ -16,14 +16,12 @@ class RegexLexer {
     // Methods
     fun tokenize(): Iterator<Token> = iterator {
         while (`𝚙`.isNotAtEnd()) {
-            if (`𝚙`.`𝚊` in setOf('[', ']', '(', ')', '{', '}', '|', '*', '+', '?', '^', '$', '.')) {
-                yield(newToken(Type.OPERATOR, `𝚙`.`𝚊`.toString()))
-                continue
-            } // all operators
-            if (Regex("""\\.""", RegexOption.DOT_MATCHES_ALL).matchAt(`𝚙`)
-                    ?.also { yield(newToken(Type.CONTROL_CHAR, it.value)) } != null
-            ) continue // e.g: `\n`, `\ `, `\\`, `\[`
-            yield(newToken(Type.LETTER, `𝚙`.`𝚊`.toString()))
+            if (Regex("""[*+]\??|\^|\$['`&N]?|\\(?:[tnrfNbBdDsSwWQUL\\]|cX|N{3})""").matchAt(`𝚙`)
+                    ?.also { yield(newToken(Type.CHARACTER, it.value)) } != null
+            ) continue
+            Regex("""\\.""").matchAt(`𝚙`)
+                ?.also { throw Exception("Invalid escape sequence") }
+            yield(newToken(Type.CHARACTER, `𝚙`.`𝚊`.toString()))
         }; yield(newToken(Type.EOF, ""))
     }
 }

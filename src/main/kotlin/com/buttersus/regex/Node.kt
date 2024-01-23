@@ -25,7 +25,11 @@ sealed class Node {
         override fun toString(): String = "Empty"
     }
 
-    abstract class Collection : Node(), kotlin.collections.Collection<Node> {
+    /**
+     * Any node that represents a list of nodes.
+     * - Indexing starts from 1.
+     */
+    abstract class Collection : Node(), List<Node> {
         abstract override fun toString(): String
 
         /**
@@ -40,22 +44,31 @@ sealed class Node {
          * @param 𝚒s Indices of needed nodes _(starts from 1)_
          * @return List of needed nodes
          */
-        abstract fun select(vararg `𝚒s`: Int): List<Node>
+        abstract fun select(vararg `𝚒s`: Int): Collection
+        operator fun component1(): Node = this[0]
+        operator fun component2(): Node = this[1]
+        operator fun component3(): Node = this[2]
+        operator fun component4(): Node = this[3]
+        operator fun component5(): Node = this[4]
     }
 
     /**
      * An immutable list of nodes, which used to unpack values from the group production.
+     * - Indexing starts from 1.
+     *
      * @see Catalog
      */
-    open class Group(vararg `𝚗s`: Node) : Collection(), List<Node> by `𝚗s`.toList() {
+    class Group(vararg `𝚗s`: Node) : Collection(), List<Node> by `𝚗s`.toList() {
         override fun toString(): String = "Group(${joinToString(", ")})"
-        override fun select(vararg `𝚒s`: Int): List<Node> =
-            this.filterIndexed { `𝚒`, _ -> `𝚒` + 1 in `𝚒s` }
+        override fun select(vararg `𝚒s`: Int): Group =
+            this.filterIndexed { `𝚒`, _ -> `𝚒` + 1 in `𝚒s` }.toGroup()
+        fun item(index: Int): Node = this[index - 1]
     }
 
     /**
      * A mutable list of nodes, which used to save values from repetitions.
      * - It's supposed to be flexible, so we forbid to use `select` method.
+     * - Indexing starts from 1.
      *
      * @see Group
      */
@@ -63,6 +76,7 @@ sealed class Node {
         override fun toString(): String = "Catalog(${joinToString(", ")})"
         override fun select(vararg `𝚒s`: Int): Nothing =
             throw UnsupportedOperationException("Catalog cannot be selected")
+        fun item(index: Int): Node = this[index - 1]
     }
 
     /**
@@ -74,4 +88,10 @@ sealed class Node {
     }
 
     // Custom nodes
+    data class Set(
+        val isPositive: Boolean,
+        val items: Catalog,
+    ) : Node() {
+        override fun toString(): String = "Set(${if (isPositive) "+" else "-"}$items)"
+    }
 }

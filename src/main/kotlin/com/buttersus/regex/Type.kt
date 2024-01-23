@@ -1,8 +1,10 @@
 package com.buttersus.regex
 
+/**
+ * Regex token type
+ */
 enum class Type {
-    CONTROL_CHAR,
-    OPERATOR,
-    LETTER,
+    CHARACTER,
+    METACHARACTER,
     EOF,
 }
