@@ -13,6 +13,15 @@ sealed class Node {
             .associate { it.name to it.getter.call(this) as Node }
     }
     open val parameters: Map<String, String> = emptyMap()
+    open val `𝚙₁`: Position? by lazy { this.properties.values.firstOrNull { it !is Empty }?.`𝚙₁` }
+    open val `𝚙₂`: Position? by lazy { this.properties.values.lastOrNull { it !is Empty }?.`𝚙₂` }
+    val `𝚟`: String
+        get() {
+            val `𝚙₁` = this.`𝚙₁`
+            val `𝚙₂` = this.`𝚙₂`
+            if (`𝚙₁` == null || `𝚙₂` == null) return ""
+            return `𝚙₁`.`𝚂`.`𝜔`.substring(`𝚙₁`.`𝚒`, `𝚙₂`.`𝚒` + 1)
+        }
 
     fun isNodeEmpty(): Boolean = this is Empty // Cannot use name `isEmpty` because of `Collection.isEmpty()`
     fun isNodeNotEmpty(): Boolean = !isNodeEmpty() // Cannot use name `isNotEmpty` because of `Collection.isNotEmpty()`
@@ -90,24 +99,46 @@ sealed class Node {
      */
     class Wrapper(val `𝚝`: Token) : Node() {
         override fun toString(): String = "Wrapper($`𝚝`)"
+        override val `𝚙₁`: Position = `𝚝`.`𝚙₁`
+        override val `𝚙₂`: Position = `𝚝`.`𝚙₂`
     }
 
     // Custom nodes
     data class Set(
         val isPositive: Boolean,
-        val items: Catalog,
+        val items: Node,
     ) : Node() {
         override val parameters: Map<String, String> = mapOf(
             "sign" to if (isPositive) "+" else "-",
         )
-
-        override fun toString(): String = "Set(${if (isPositive) "+" else "-"}$items)"
     }
 
     data class Range(
         val from: Node,
         val to: Node,
+    ) : Node()
+
+    data class Kleene(
+        val pattern: Node,
+        val type: KleeneType,
     ) : Node() {
-        override fun toString(): String = "Range($from, $to)"
+        override val parameters: Map<String, String> = mapOf(
+            "type" to type.toString(),
+        )
+
+        enum class KleeneType {
+            STAR,
+            PLUS,
+            QUESTION;
+
+            companion object {
+                fun fromString(string: String): KleeneType = when (string) {
+                    "*" -> STAR
+                    "+" -> PLUS
+                    "?" -> QUESTION
+                    else -> throw IllegalArgumentException("Unknown parameter: $string")
+                }
+            }
+        }
     }
 }

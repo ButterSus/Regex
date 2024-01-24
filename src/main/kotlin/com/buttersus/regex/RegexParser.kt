@@ -66,7 +66,7 @@ class RegexParser {
         if (!`𝚕`) return `𝚏`().also { `𝚖`[`𝚔`] = it to mark() }
         var `𝚗`: Node? = null
         var `𝚒`: Index = `𝚒₀`
-        `𝚖`[`𝚔`] = `𝚗` to `𝚒`
+        `𝚖`[`𝚔`] = null to `𝚒`
         while (true) {
             reset(`𝚒₀`)
             val `𝚗′` = `𝚏`()
@@ -406,22 +406,6 @@ class RegexParser {
     private fun `⋃⊛`(vararg `𝚏s`: () -> Node?): Node = `⊛` { `⋃`(*`𝚏s`) }
 
     // Custom productions
-//    fun parse(): Node? = `𝚖`("parse", true) {
-//        `⋃`(
-//            // cases==>
-//            { // parse? <CHARACTER> | <EOF> => Self
-//                `⋃`(
-//                    {
-//                        `{…}`(
-//                            { `∅` { `parse`() } },
-//                            { `≈`(Type.CHARACTER) }
-//                        )
-//                    },
-//                    { `≈`(Type.EOF) }
-//                )
-//            }
-//        )   // <==end cases
-//    }
     fun parse(): Node? = RE()
 
     private fun `RE`(): Node? = `𝚖`("RE", true) {
@@ -439,17 +423,22 @@ class RegexParser {
     private fun `basic-RE`(): Node? = `𝚖`("basic-RE", true) {
         `⋃`(
             // cases==>
-            { // .elementary-RE {'*' | '+'}? => Self
-                `{…}`(
+            { // elementary-RE {'*' | '+' | '?'} => Kleene(pattern, type = $enumStringMap(KleeneType, '*': STAR, '+': PLUS, '?': QUESTION))
+                val (`𝚖₁`, `𝚖₂`) = `{…}`(
                     { `elementary-RE`() },
-                    { // {'*' | '+'}?
-                        `⋃∅`(
+                    {
+                        `⋃`(
                             { `≡`("*") },
-                            { `≡`("+") }
+                            { `≡`("+") },
+                            { `≡`("?") }
                         )
                     }
-                )?.item(1)
+                )?.select(1, 2) ?: return@`⋃` null
+                Node.Kleene(`𝚖₁`, Node.Kleene.KleeneType.fromString(`𝚖₂`.`𝚟`))
             },
+            { // elementary-RE => Self
+                `elementary-RE`()
+            }
         )   // <==end cases
     }
 
@@ -461,8 +450,7 @@ class RegexParser {
                     { `group`() },
                     { `≡`(".") },
                     { `≡`("$") },
-                    { `negative-set`() },
-                    { `positive-set`() },
+                    { `set`() },
                     { `≈`(Type.CHARACTER) }
                 )
             }
@@ -482,31 +470,17 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `positive-set`(): Node? = `𝚖`("positive-set", true) {
+    private fun `set`(): Node? = `𝚖`("negative-set", true) {
         `⋃`(
             // cases==>
-            { // '[' .set-items ']' => Set(isPositive = true, items)
-                val (`𝚖₁`) = `{…}`(
+            { // '[' .'^'? .set-items ']' => Set(isPositive = $isEmpty(), items)
+                val (`𝚖₁`, `𝚖₂`) = `{…}`(
                     { `≡`("[") },
+                    { `∅` { `≡`("^") } },
                     { `set-items`() },
                     { `≡`("]") }
-                )?.select(2) ?: return@`⋃` null
-                Node.Set(true, `𝚖₁` as Node.Catalog)
-            },
-        )   // <==end cases
-    }
-
-    private fun `negative-set`(): Node? = `𝚖`("negative-set", true) {
-        `⋃`(
-            // cases==>
-            { // '[' '^' .set-items ']' => Set(isPositive = false, items)
-                val (`𝚖₁`) = `{…}`(
-                    { `≡`("[") },
-                    { `≡`("^") },
-                    { `set-items`() },
-                    { `≡`("]") }
-                )?.select(3) ?: return@`⋃` null
-                Node.Set(false, `𝚖₁` as Node.Catalog)
+                )?.select(2, 3) ?: return@`⋃` null
+                Node.Set(`𝚖₁` is Node.Empty, `𝚖₂`)
             },
         )   // <==end cases
     }
@@ -514,7 +488,7 @@ class RegexParser {
     private fun `set-items`(): Node? = `𝚖`("set-items", true) {
         `⋃`(
             // cases==>
-            { // {range | ?!']' {<CHARACTER> => }}+ => Self
+            { // {range | ?!']' <CHARACTER>}+ => Self
                 `⋃⊕`(
                     { `range`() },
                     {
