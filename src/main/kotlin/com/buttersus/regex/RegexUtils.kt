@@ -66,7 +66,9 @@ fun Node.toPretty(indent: Int = 2): String {
                 }
             }
         }
-        is Node.Wrapper -> return "⟨${this.`𝚝`.`𝚟`}⟩"
+        is Node.Wrapper -> if (this.`𝚝`.`𝚃` != Type.EOF) {
+            return "⟨${this.`𝚝`.`𝚟`}⟩"
+        } else return "File end..."
         is Node.Empty -> return "ε"
         else -> {
             val inner = this.properties

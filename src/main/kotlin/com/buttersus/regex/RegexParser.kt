@@ -40,7 +40,7 @@ class RegexParser {
     private fun Index.toMark(): Index = this.also { reset(it) }
 
     // Memoization methods
-    private val `𝕄`: MutableMap<Index, MutableMap<() -> Node?, Pair<Node?, Index>>> =
+    private val `𝕄`: MutableMap<Index, MutableMap<String, Pair<Node?, Index>>> =
         mutableMapOf() // memoization table
 
     /**
@@ -59,19 +59,21 @@ class RegexParser {
      *
      * @see 𝕄
      */
-    private fun `𝚖`(`𝚕`: Boolean = false, `𝚏`: () -> Node?): Node? {
-        var `𝚒` = mark()
+    private fun `𝚖`(`𝚔`: String, `𝚕`: Boolean = false, `𝚏`: () -> Node?): Node? {
+        val `𝚒₀` = mark()
         val `𝚖` = `𝕄`.getOrPut(`𝚒`) { mutableMapOf() }
-        `𝚖`[`𝚏`]?.run { this.second.toMark(); return this.first }
-        if (!`𝚕`) return `𝚏`().also { `𝚖`[`𝚏`] = it to mark() }
+        `𝚖`[`𝚔`]?.run { this.second.toMark(); return this.first }
+        if (!`𝚕`) return `𝚏`().also { `𝚖`[`𝚔`] = it to mark() }
         var `𝚗`: Node? = null
+        var `𝚒`: Index = `𝚒₀`
+        `𝚖`[`𝚔`] = `𝚗` to `𝚒`
         while (true) {
-            `𝚖`[`𝚏`] = `𝚗` to `𝚒`.toMark()
+            reset(`𝚒₀`)
             val `𝚗′` = `𝚏`()
             if (mark() <= `𝚒`) break
             `𝚗` = `𝚗′`
             `𝚒` = mark()
-            `𝚖`[`𝚏`] = `𝚗` to `𝚒`
+            `𝚖`[`𝚔`] = `𝚗` to `𝚒`
         }
         return `𝚗`.also { `𝚒`.toMark() }
     }
@@ -322,10 +324,11 @@ class RegexParser {
      * @return the repeated production or `null` if it is not successful
      */
     private fun `⊕̂`(`𝚏`: () -> Node?, `𝚜`: () -> Node?): Node.Catalog? {
+        var `𝚒`: Index
         val `ℕ` = Node.Catalog(`𝚏`() ?: return null)
         while (true) {
-            val `𝚒` = mark()
-            `𝚜`() ?: return `ℕ`
+            `𝚒` = mark()
+            `𝚜`() ?: return `ℕ`.also { `𝚒`.toMark() }
             val `𝚗` = `𝚏`() ?: return `ℕ`.also { `𝚒`.toMark() }
             `ℕ`.add(`𝚗`)
         }
@@ -344,13 +347,14 @@ class RegexParser {
      * @return the repeated production or `null` if it is not successful
      */
     private fun `⊛̂`(`𝚏`: () -> Node?, `𝚜`: () -> Node?): Node.Catalog {
-        val `ℕ` = Node.Catalog()
         var `𝚒` = mark()
+        val `ℕ` = Node.Catalog()
         while (true) {
+            // here we use toMark, because separator production can be consumed before
             val `𝚗` = `𝚏`() ?: return `ℕ`.also { `𝚒`.toMark() }
-            `ℕ`.add(`𝚗`)
             `𝚒` = mark()
-            `𝚜`() ?: return `ℕ`
+            `ℕ`.add(`𝚗`)
+            `𝚜`() ?: return `ℕ`.also { `𝚒`.toMark() }
         }
     }
 
@@ -387,7 +391,7 @@ class RegexParser {
     private fun `{⋃}`(vararg `𝚏s`: () -> Node.Group?): Node.Group? {
         val `𝚒` = mark()
         return Node.Group(*`𝚏s`.firstNotNullOfOrNull { `𝚏` ->
-            `𝚏`() ?: `𝚒`.toMark().let { null }
+            `𝚏`() ?: null.also { `𝚒`.toMark() }
         }?.toTypedArray() ?: return null)
     }
 
@@ -402,20 +406,37 @@ class RegexParser {
     private fun `⋃⊛`(vararg `𝚏s`: () -> Node?): Node = `⊛` { `⋃`(*`𝚏s`) }
 
     // Custom productions
-    fun parse(): Node? = `RE`()
-    private fun `RE`(): Node? = `𝚖`(true) {
+//    fun parse(): Node? = `𝚖`("parse", true) {
+//        `⋃`(
+//            // cases==>
+//            { // parse? <CHARACTER> | <EOF> => Self
+//                `⋃`(
+//                    {
+//                        `{…}`(
+//                            { `∅` { `parse`() } },
+//                            { `≈`(Type.CHARACTER) }
+//                        )
+//                    },
+//                    { `≈`(Type.EOF) }
+//                )
+//            }
+//        )   // <==end cases
+//    }
+    fun parse(): Node? = RE()
+
+    private fun `RE`(): Node? = `𝚖`("RE", true) {
         `⋃`(
             // cases==>
             { // basic-RE+:'|'+ => Self
                 `⊕̂`(
-                    { `basic-RE`() },
+                    { `⊕` { `basic-RE`() } },
                     { `≡`("|") }
                 )
             },
         )   // <==end cases
     }
 
-    private fun `basic-RE`(): Node? = `𝚖`(true) {
+    private fun `basic-RE`(): Node? = `𝚖`("basic-RE", true) {
         `⋃`(
             // cases==>
             { // .elementary-RE {'*' | '+'}? => Self
@@ -432,7 +453,7 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `elementary-RE`(): Node? = `𝚖`(true) {
+    private fun `elementary-RE`(): Node? = `𝚖`("elementary-RE", true) {
         `⋃`(
             // cases==>
             { // {group | '.' | '$' | negative-set | positive-set | <CHARACTER>} => Self
@@ -448,7 +469,7 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `group`(): Node? = `𝚖`(true) {
+    private fun `group`(): Node? = `𝚖`("group", true) {
         `⋃`(
             // cases==>
             { // '(' .RE ')' => Self
@@ -461,7 +482,7 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `positive-set`(): Node? = `𝚖`(true) {
+    private fun `positive-set`(): Node? = `𝚖`("positive-set", true) {
         `⋃`(
             // cases==>
             { // '[' .set-items ']' => Set(isPositive = true, items)
@@ -475,7 +496,7 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `negative-set`(): Node? = `𝚖`(true) {
+    private fun `negative-set`(): Node? = `𝚖`("negative-set", true) {
         `⋃`(
             // cases==>
             { // '[' '^' .set-items ']' => Set(isPositive = false, items)
@@ -490,7 +511,7 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `set-items`(): Node? = `𝚖`(true) {
+    private fun `set-items`(): Node? = `𝚖`("set-items", true) {
         `⋃`(
             // cases==>
             { // {range | ?!']' {<CHARACTER> => }}+ => Self
@@ -507,7 +528,7 @@ class RegexParser {
         )   // <==end cases
     }
 
-    private fun `range`(): Node? = `𝚖`(true) {
+    private fun `range`(): Node? = `𝚖`("range", true) {
         `⋃`(
             // cases==>
             { // .<CHARACTER> '-' .<CHARACTER> => Range(from, to)
