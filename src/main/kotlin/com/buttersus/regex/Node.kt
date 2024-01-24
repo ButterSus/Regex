@@ -2,14 +2,17 @@
 
 package com.buttersus.regex
 
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.KClass
+import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.isSubclassOf
 
 sealed class Node {
     val properties: Map<String, Node> by lazy {
-        this::class.memberProperties
-            .filter { it.returnType.classifier == Node::class }
+        this::class.declaredMemberProperties
+            .filter { (it.returnType.classifier as KClass<*>).isSubclassOf(Node::class) }
             .associate { it.name to it.getter.call(this) as Node }
     }
+    open val parameters: Map<String, String> = emptyMap()
 
     fun isNodeEmpty(): Boolean = this is Empty // Cannot use name `isEmpty` because of `Collection.isEmpty()`
     fun isNodeNotEmpty(): Boolean = !isNodeEmpty() // Cannot use name `isNotEmpty` because of `Collection.isNotEmpty()`
@@ -62,6 +65,7 @@ sealed class Node {
         override fun toString(): String = "Group(${joinToString(", ")})"
         override fun select(vararg `𝚒s`: Int): Group =
             this.filterIndexed { `𝚒`, _ -> `𝚒` + 1 in `𝚒s` }.toGroup()
+
         fun item(index: Int): Node = this[index - 1]
     }
 
@@ -76,6 +80,7 @@ sealed class Node {
         override fun toString(): String = "Catalog(${joinToString(", ")})"
         override fun select(vararg `𝚒s`: Int): Nothing =
             throw UnsupportedOperationException("Catalog cannot be selected")
+
         fun item(index: Int): Node = this[index - 1]
     }
 
@@ -92,6 +97,17 @@ sealed class Node {
         val isPositive: Boolean,
         val items: Catalog,
     ) : Node() {
+        override val parameters: Map<String, String> = mapOf(
+            "sign" to if (isPositive) "+" else "-",
+        )
+
         override fun toString(): String = "Set(${if (isPositive) "+" else "-"}$items)"
+    }
+
+    data class Range(
+        val from: Node,
+        val to: Node,
+    ) : Node() {
+        override fun toString(): String = "Range($from, $to)"
     }
 }

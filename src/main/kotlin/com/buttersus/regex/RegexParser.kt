@@ -9,14 +9,9 @@ package com.buttersus.regex
  * - PEG parsing
  * - !Each production, which returns null, does not consume the token
  *
- * @param logging whether to log the parsing process or not
  * @constructor Creates a parser with the given logging
- *
- * @see ParserLog for more information about logging
  */
-class RegexParser(
-    val logging: Boolean = false,
-) {
+class RegexParser {
     // Attributes
     internal lateinit var `𝕋`: Iterator<Token>
     internal val `𝕋′`: ArrayList<Token> = arrayListOf()
@@ -59,13 +54,12 @@ class RegexParser(
      * ```
      *
      * @param 𝚕 whether the grammar is left-recursive or not
-     * @param 𝚟 the name of the method, which is used to memoize the production
      * @param 𝚏 the production to memoize (also is the key, which used to retrieve the memoized production)
      * @return the memoized production
      *
      * @see 𝕄
      */
-    private fun `𝚖`(`𝚕`: Boolean = false, `𝚟`: String, `𝚏`: () -> Node?): Node? {
+    private fun `𝚖`(`𝚕`: Boolean = false, `𝚏`: () -> Node?): Node? {
         var `𝚒` = mark()
         val `𝚖` = `𝕄`.getOrPut(`𝚒`) { mutableMapOf() }
         `𝚖`[`𝚏`]?.run { this.second.toMark(); return this.first }
@@ -80,16 +74,6 @@ class RegexParser(
             `𝚖`[`𝚏`] = `𝚗` to `𝚒`
         }
         return `𝚗`.also { `𝚒`.toMark() }
-    }
-
-    // Logging methods
-    fun getLog(): ParserLog {
-        TODO(
-            """
-            |This method is not implemented yet.
-            |It will be implemented in the next version.
-            |""".trimMargin()
-        )
     }
 
     // Parser methods
@@ -177,12 +161,12 @@ class RegexParser(
      * ```
      *
      * @param 𝚏 the production to lookahead
-     * @return `Unit` if negative lookahead is successful, otherwise returns `null`
+     * @return `Node.Empty` if negative lookahead is successful, otherwise returns `null`
      */
-    private fun `≠`(`𝚏`: () -> Node?): Unit? {
+    private fun `≠`(`𝚏`: () -> Node?): Node.Empty? {
         val `𝚒` = mark()
         val `𝚗` = `𝚏`()
-        return if (`𝚗` == null) Unit else null.also { `𝚒`.toMark() }
+        return if (`𝚗` == null) Node.Empty else null.also { `𝚒`.toMark() }
     }
 
     /**
@@ -197,11 +181,11 @@ class RegexParser(
      * ```
      *
      * @param 𝚏s the group of productions to lookahead
-     * @return `Unit` if negative lookahead is successful, otherwise returns `null`
+     * @return `Node.Empty` if negative lookahead is successful, otherwise returns `null`
      */
-    private fun `{≠}`(vararg `𝚏s`: () -> Node?): Unit? {
+    private fun `{≠}`(vararg `𝚏s`: () -> Node?): Node.Empty? {
         val `𝚒` = mark()
-        `𝚏s`.forEach { `𝚏` -> `𝚏`() ?: return Unit.also { `𝚒`.toMark() } }
+        `𝚏s`.forEach { `𝚏` -> `𝚏`() ?: return Node.Empty.also { `𝚒`.toMark() } }
         return null.also { `𝚒`.toMark() }
     }
 
@@ -419,10 +403,10 @@ class RegexParser(
 
     // Custom productions
     fun parse(): Node? = `RE`()
-    private fun `RE`(): Node? = `𝚖`(true, "RE") {
+    private fun `RE`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
-            { // .basic-RE+:'|'+ => Self
+            { // basic-RE+:'|'+ => Self
                 `⊕̂`(
                     { `basic-RE`() },
                     { `≡`("|") }
@@ -431,7 +415,7 @@ class RegexParser(
         )   // <==end cases
     }
 
-    private fun `basic-RE`(): Node? = `𝚖`(true, "basic-RE") {
+    private fun `basic-RE`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
             { // .elementary-RE {'*' | '+'}? => Self
@@ -448,10 +432,10 @@ class RegexParser(
         )   // <==end cases
     }
 
-    private fun `elementary-RE`(): Node? = `𝚖`(true, "elementary-RE") {
+    private fun `elementary-RE`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
-            { // .{group | '.' | '$' | negative-set|  positive-set | <CHARACTER>} => Self
+            { // {group | '.' | '$' | negative-set | positive-set | <CHARACTER>} => Self
                 `⋃`(
                     { `group`() },
                     { `≡`(".") },
@@ -464,7 +448,7 @@ class RegexParser(
         )   // <==end cases
     }
 
-    private fun `group`(): Node? = `𝚖`(true, "group") {
+    private fun `group`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
             { // '(' .RE ')' => Self
@@ -477,7 +461,7 @@ class RegexParser(
         )   // <==end cases
     }
 
-    private fun `positive-set`(): Node? = `𝚖`(true, "positive-set") {
+    private fun `positive-set`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
             { // '[' .set-items ']' => Set(isPositive = true, items)
@@ -491,7 +475,7 @@ class RegexParser(
         )   // <==end cases
     }
 
-    private fun `negative-set`(): Node? = `𝚖`(true, "negative-set") {
+    private fun `negative-set`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
             { // '[' '^' .set-items ']' => Set(isPositive = false, items)
@@ -506,27 +490,33 @@ class RegexParser(
         )   // <==end cases
     }
 
-    private fun `set-items`(): Node? = `𝚖`(true, "set-items") {
+    private fun `set-items`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
-            { // .{range | <CHARACTER>}+ => Self
+            { // {range | ?!']' {<CHARACTER> => }}+ => Self
                 `⋃⊕`(
                     { `range`() },
-                    { `≈`(Type.CHARACTER) }
+                    {
+                        `{…}`(
+                            { `≠` { `≡`("]") } },
+                            { `≈`(Type.CHARACTER) }
+                        )?.item(2)
+                    }
                 )
             },
         )   // <==end cases
     }
 
-    private fun `range`(): Node? = `𝚖`(true, "range") {
+    private fun `range`(): Node? = `𝚖`(true) {
         `⋃`(
             // cases==>
-            { // <CHARACTER> '-' <CHARACTER> => Self
-                `{…}`(
+            { // .<CHARACTER> '-' .<CHARACTER> => Range(from, to)
+                val (`𝚖₁`, `𝚖₂`) = `{…}`(
                     { `≈`(Type.CHARACTER) },
                     { `≡`("-") },
                     { `≈`(Type.CHARACTER) }
-                )?.item(3)
+                )?.select(1, 3) ?: return@`⋃` null
+                Node.Range(`𝚖₁`, `𝚖₂`)
             },
         )   // <==end cases
     }

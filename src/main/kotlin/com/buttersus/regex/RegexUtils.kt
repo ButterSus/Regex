@@ -33,3 +33,53 @@ fun RegexLexer.newToken(`𝚃`: Type, `𝚟`: String): Token = Token(this, `𝚃
 fun Token.wrap(): Node.Wrapper = Node.Wrapper(this)
 fun Node.Wrapper.unwrap(): Token = this.`𝚝`
 fun List<Node>.toGroup(): Node.Group = Node.Group(*this.toTypedArray())
+fun Node.toPretty(indent: Int = 2): String {
+    when (this) {
+        is Node.Group -> {
+            val content: List<String> = this.map { it.toPretty(indent) }
+            val lines = content[0].count { it == '\n' }
+            return when {
+                this.size == 0 -> "{ ∅ }"
+                this.size == 1 && lines == 0 -> "{ 1 -> ${content[0]} }"
+                else -> {
+                    val offset = " ".repeat(indent)
+                    val inner = content
+                        .mapIndexed { i, s -> "${i + 1} -> $s" }
+                        .joinToString(",\n")
+                        .prependIndent(offset)
+                    "{\n$inner\n}"
+                }
+            }
+        }
+        is Node.Catalog -> {
+            val content: List<String> = this.map { it.toPretty(indent) }
+            val lines = content[0].count { it == '\n' }
+            return when {
+                this.size == 0 -> "[ ∅ ]"
+                this.size == 1 && lines == 0 -> "[ ${content[0]} ]"
+                else -> {
+                    val offset = " ".repeat(indent)
+                    val inner = content
+                        .joinToString(",\n")
+                        .prependIndent(offset)
+                    "[\n$inner\n]"
+                }
+            }
+        }
+        is Node.Wrapper -> return "⟨${this.`𝚝`.`𝚟`}⟩"
+        is Node.Empty -> return "ε"
+        else -> {
+            val inner = this.properties
+                .map { (k, v) -> "$k: ${v.toPretty()}" }
+                .joinToString(",\n")
+                .prependIndent(" ".repeat(indent))
+            if (this.parameters.isEmpty())
+                return "${this::class.simpleName} {\n$inner\n}"
+            val params = this.parameters
+                .map { (k, v) -> "$k: $v" }
+                .joinToString(", ")
+                .prependIndent(" ".repeat(indent) + "$")
+            return "${this::class.simpleName} {\n$params\n$inner\n}"
+        }
+    }
+}
