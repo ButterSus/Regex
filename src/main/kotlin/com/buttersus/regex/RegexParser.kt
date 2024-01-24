@@ -79,26 +79,11 @@ class RegexParser {
     }
 
     // Parser methods
-    /**
-     * Parse method: Match `𝚝` type token
-     * - If token type is not matched, then returns `null`
-     * - Otherwise returns the token and consumes it
-     *
-     * Usage:
-     * ```
-     * val `𝚗` = `≈`(Type.LETTER) ?: return null
-     * ```
-     *
-     * @param 𝚝 the token type to match
-     * @return the matched token
-     */
-    private fun `≈`(`𝚝`: Type): Node? {
-        val `𝚝′` = peek()?.`𝚃` ?: return null
-        return if (`𝚝′` == `𝚝`) next()?.wrap() ?: return null else null
-    }
 
+    // 1. Token methods
+    // ================>
     /**
-     * Parse method: Match `𝚟` value token
+     * Parse method: Match by value of token `"𝚟"`
      * - If token value is not matched, then returns `null`
      * - Otherwise returns the token and consumes it
      *
@@ -116,6 +101,26 @@ class RegexParser {
     }
 
     /**
+     * Parse method: Match by type of token `<𝚝>`
+     * - If token type is not matched, then returns `null`
+     * - Otherwise returns the token and consumes it
+     *
+     * Usage:
+     * ```
+     * val `𝚗` = `≈`(Type.LETTER) ?: return null
+     * ```
+     *
+     * @param 𝚝 the token type to match
+     * @return the matched token
+     */
+    private fun `≈`(`𝚝`: Type): Node? {
+        val `𝚝′` = peek()?.`𝚃` ?: return null
+        return if (`𝚝′` == `𝚝`) next()?.wrap() ?: return null else null
+    }
+
+    // 2. Single productions
+    // =====================>
+    /**
      * Syntax operator: Positive lookahead `?=α`
      * - Expects successful production
      * - In any case does not consume the token
@@ -131,25 +136,6 @@ class RegexParser {
         val `𝚒` = mark()
         val `𝚗` = `𝚏`()
         return `𝚗`?.also { `𝚒`.toMark() }
-    }
-
-    /**
-     * Group syntax operator: Positive lookahead `?={α₁, α₂, …}`
-     * - Expects successful group of productions
-     * - In any case does not consume the token
-     *
-     * Usage:
-     * ```
-     * val (`𝚗₁`, `𝚗₃`) = `{?=}`({…}₁, {…}₂, …)?.select(1, 3) ?: return null
-     * ```
-     *
-     * @param 𝚏s the group of productions to lookahead
-     * @return the lookahead group of productions
-     */
-    private fun `{≟}`(vararg `𝚏s`: () -> Node?): Node.Group? {
-        val `𝚒` = mark()
-        val `𝚗𝚜` = `𝚏s`.map { `𝚏` -> `𝚏`() ?: return null.also { `𝚒`.toMark() } }
-        return Node.Group(*`𝚗𝚜`.toTypedArray()).also { `𝚒`.toMark() }
     }
 
     /**
@@ -172,26 +158,6 @@ class RegexParser {
     }
 
     /**
-     * Group syntax operator: Negative lookahead `?!{α₁, α₂, …}`
-     * - Expects failed group of productions
-     * _(at least one production must be failed)_
-     * - In any case does not consume the token
-     *
-     * Usage:
-     * ```
-     * `{≠}`({…}₁, {…}₂, …) ?: return null
-     * ```
-     *
-     * @param 𝚏s the group of productions to lookahead
-     * @return `Node.Empty` if negative lookahead is successful, otherwise returns `null`
-     */
-    private fun `{≠}`(vararg `𝚏s`: () -> Node?): Node.Empty? {
-        val `𝚒` = mark()
-        `𝚏s`.forEach { `𝚏` -> `𝚏`() ?: return Node.Empty.also { `𝚒`.toMark() } }
-        return null.also { `𝚒`.toMark() }
-    }
-
-    /**
      * Syntax operator: Optional `α?`
      * - If production is not successful, then returns `Empty`
      * - Does not consume the token if production is not successful
@@ -207,72 +173,23 @@ class RegexParser {
     private fun `∅`(`𝚏`: () -> Node?): Node = `𝚏`() ?: Node.Empty
 
     /**
-     * Group syntax operator: Optional `{α₁, α₂, …}?`
-     * - If group of productions is not successful, then returns alternatives,
-     * which are passed with pairs.
-     * - Does not consume the token if group of productions is not successful
+     * Syntax operator: Alternatives `α₁|α₂|…`
+     * - If production αᵢ is not successful, then returns production αᵢ₊₁
+     * - And so on until the last production
      *
      * Usage:
      * ```
-     * val (`𝚗₁`, `𝚗₃`) = `{∅}`({…}₁ to `𝚗₁′`, {…}₂ to `𝚗₂′`, …).select(1, 3)
-     * ```
-     *
-     * @param 𝚏s the group of productions with alternatives
-     * @return the optional group of productions
-     */
-    fun `{∅}₁`(vararg `𝚏s`: Pair<() -> Node?, Node>): Node.Group {
-        val `𝚒` = mark()
-        val `𝚗𝚜` = `𝚏s`.map { (`𝚏`, _) ->
-            `𝚏`() ?: return Node.Group(*`𝚏s`.map { (_, `𝚗`) -> `𝚗` }.toTypedArray())
-                .also { `𝚒`.toMark() }
-        }
-        return Node.Group(*`𝚗𝚜`.toTypedArray())
-    }
-
-    /**
-     * Group syntax operator: Optional `{α₁, α₂, …}?`
-     * - If group of productions is not successful, then returns
-     * result of alternative functions.
-     * - Does not consume the token if group of productions is not successful
-     *
-     * Usage:
-     * ```
-     * val `𝚗` = `{∅}`({…}₁ to {…}₁′, {…}₂ to {…}₂′, …)
-     * ```
-     *
-     * Warning: Functions shouldn't change the state of the parser. _(its index)_
-     *
-     * @param 𝚏s the group of productions with alternative functions
-     * @return the optional group of productions
-     */
-    fun `{∅}₂`(vararg `𝚏s`: Pair<() -> Node?, () -> Node>): Node.Group {
-        val `𝚒` = mark()
-        val `𝚗𝚜` = `𝚏s`.map { (`𝚏`, _) ->
-            `𝚏`() ?: return Node.Group(*`𝚏s`.map { (_, `𝚗`) -> `𝚗`() }.toTypedArray())
-                .also { `𝚒`.toMark() }
-        }
-        return Node.Group(*`𝚗𝚜`.toTypedArray())
-    }
-
-    /**
-     * Group syntax operator: Group `{α₁, α₂, …}`
-     * - If group of productions is not successful, then returns `null`
-     * - Does not consume the token if group of productions is not successful
-     *
-     * Usage:
-     * ```
-     * val (`𝚗₁`, `𝚗₃`) = `{…}`({…}₁, {…}₂, …)?.select(1, 3) ?: return null
+     * val `𝚗` = `⋃`({…}₁, {…}₂, …) ?: return null
      * ```
      *
      * @param 𝚏s the group of productions
-     * @return the group of productions
+     * @return the alternative production or `null` if it is not successful
      */
-    fun `{…}`(vararg `𝚏s`: () -> Node?): Node.Group? {
-        val `𝚒` = mark()
-        val `𝚗𝚜` = `𝚏s`.map { `𝚏` -> `𝚏`() ?: return null.also { `𝚒`.toMark() } }
-        return Node.Group(*`𝚗𝚜`.toTypedArray())
+    private fun `⋃`(vararg `𝚏s`: () -> Node?): Node? {
+        return `𝚏s`.firstNotNullOfOrNull { `𝚏` -> `𝚏`() }
     }
 
+    // 3. Repetitive productions
     /**
      * Repetitive syntax operator: One or more `α+`
      *
@@ -358,44 +275,93 @@ class RegexParser {
         }
     }
 
+    // 4. Group productions
+    // ====================>
     /**
-     * Syntax operator: Alternatives `α₁|α₂|…`
-     * - If production αᵢ is not successful, then returns production αᵢ₊₁
-     * - And so on until the last production
-     *
-     * Usage:
-     * ```
-     * val `𝚗` = `⋃`({…}₁, {…}₂, …) ?: return null
-     * ```
-     *
-     * @param 𝚏s the group of productions
-     * @return the alternative production or `null` if it is not successful
-     */
-    private fun `⋃`(vararg `𝚏s`: () -> Node?): Node? {
-        return `𝚏s`.firstNotNullOfOrNull { `𝚏` -> `𝚏`() }
-    }
-
-    /**
-     * Group syntax operator: Alternatives `{α₁, α₂, …}`
+     * Group syntax operator: Group `{α₁, α₂, …}`
      * - If group of productions is not successful, then returns `null`
      * - Does not consume the token if group of productions is not successful
      *
      * Usage:
      * ```
-     * val `𝚗` = `{⋃}`({…}₁, {…}₂, …) ?: return null
+     * val (`𝚗₁`, `𝚗₃`) = `{…}`({…}₁, {…}₂, …)?.select(1, 3) ?: return null
      * ```
      *
      * @param 𝚏s the group of productions
      * @return the group of productions
      */
-    private fun `{⋃}`(vararg `𝚏s`: () -> Node.Group?): Node.Group? {
+    fun `{…}`(vararg `𝚏s`: () -> Node?): Node.Group? {
         val `𝚒` = mark()
-        return Node.Group(*`𝚏s`.firstNotNullOfOrNull { `𝚏` ->
-            `𝚏`() ?: null.also { `𝚒`.toMark() }
-        }?.toTypedArray() ?: return null)
+        val `𝚗𝚜` = `𝚏s`.map { `𝚏` -> `𝚏`() ?: return null.also { `𝚒`.toMark() } }
+        return Node.Group(*`𝚗𝚜`.toTypedArray())
     }
 
-    // Shortcuts
+    /**
+     * Group syntax operator: Optional `{α₁, α₂, …}?`
+     * - If group of productions is not successful, then returns alternatives,
+     * which are passed with pairs.
+     * - Does not consume the token if group of productions is not successful
+     *
+     * Usage:
+     * ```
+     * val (`𝚗₁`, `𝚗₃`) = `{∅}`({…}₁ to `𝚗₁′`, {…}₂ to `𝚗₂′`, …).select(1, 3)
+     * ```
+     *
+     * @param 𝚏s the group of productions with alternatives
+     * @return the optional group of productions
+     */
+    fun `{∅}₁`(vararg `𝚏s`: Pair<() -> Node?, Node>): Node.Group {
+        val `𝚒` = mark()
+        val `𝚗𝚜` = `𝚏s`.map { (`𝚏`, _) ->
+            `𝚏`() ?: return Node.Group(*`𝚏s`.map { (_, `𝚗`) -> `𝚗` }.toTypedArray())
+                .also { `𝚒`.toMark() }
+        }
+        return Node.Group(*`𝚗𝚜`.toTypedArray())
+    }
+
+    /**
+     * Group syntax operator: Optional `{α₁, α₂, …}?`
+     * - If group of productions is not successful, then returns
+     * result of alternative functions.
+     * - Does not consume the token if group of productions is not successful
+     *
+     * Usage:
+     * ```
+     * val `𝚗` = `{∅}`({…}₁ to {…}₁′, {…}₂ to {…}₂′, …)
+     * ```
+     *
+     * @param 𝚏s the group of productions with alternative functions
+     * @return the optional group of productions
+     */
+    fun `{∅}₂`(vararg `𝚏s`: Pair<() -> Node?, () -> Node>): Node.Group {
+        val `𝚒` = mark()
+        val `𝚗𝚜` = `𝚏s`.map { (`𝚏`, _) ->
+            `𝚏`() ?: return Node.Group(*`𝚏s`.map { (_, `𝚗`) -> `𝚗`() }.toTypedArray())
+                .also { `𝚒`.toMark() }
+        }
+        return Node.Group(*`𝚗𝚜`.toTypedArray())
+    }
+
+    // 5. Shortcuts
+    // ============>
+    /** `<𝚝>?` */
+    private fun `≈∅`(`𝚝`: Type): Node = `≈`(`𝚝`) ?: Node.Empty
+
+    /** `<𝚝>+` */
+    private fun `≈⊕`(`𝚝`: Type): Node.Catalog? = `⊕` { `≈`(`𝚝`) }
+
+    /** `<𝚝>*` */
+    private fun `≈⊛`(`𝚝`: Type): Node.Catalog = `⊛` { `≈`(`𝚝`) }
+
+    /** `"𝚟"?` */
+    private fun `≡∅`(`𝚟`: String): Node = `≡`(`𝚟`) ?: Node.Empty
+
+    /** `"𝚟"+` */
+    private fun `≡⊕`(`𝚟`: String): Node.Catalog? = `⊕` { `≡`(`𝚟`) }
+
+    /** `"𝚟"*` */
+    private fun `≡⊛`(`𝚟`: String): Node.Catalog = `⊛` { `≡`(`𝚟`) }
+
     /** `{α₁ ∣ α₂ ∣ …}?` */
     private fun `⋃∅`(vararg `𝚏s`: () -> Node?): Node? = `⋃`(*`𝚏s`, { Node.Empty })
 
@@ -407,7 +373,6 @@ class RegexParser {
 
     // Custom productions
     fun parse(): Node? = RE()
-
     private fun `RE`(): Node? = `𝚖`("RE", true) {
         `⋃`(
             // cases==>
